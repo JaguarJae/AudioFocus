@@ -7,6 +7,10 @@ namespace AudioFocus
     {
         static async Task Main(string[] args)
         {
+            GlobalSystemMediaTransportControlsSession spotifySession = null;
+
+            bool spotifyPlaying = false;
+            bool otherPlaying = false;
             
             async Task Sessions()
             {
@@ -15,7 +19,20 @@ namespace AudioFocus
 
                 foreach (var session in sessions)
                 {
-                    Console.WriteLine(session.SourceAppUserModelId);
+                    var status = session.GetPlaybackInfo().PlaybackStatus;
+
+                    if (status == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing)
+                    {
+                        if (session.SourceAppUserModelId.Contains("Spotify"))
+                        {
+                            spotifySession = session;
+                            spotifyPlaying = true;
+                        }
+                        else
+                        {
+                            otherPlaying = true;
+                        }
+                    }
                 }
             }
 
