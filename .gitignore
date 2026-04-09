@@ -4,12 +4,3 @@ obj/
 
 # 🔹 Visual Studio
 .vs/
-*.user
-*.suo
-
-# 🔹 Logs
-*.log
-
-# 🔹 Sistema operativo
-Thumbs.db
-.DS_Store

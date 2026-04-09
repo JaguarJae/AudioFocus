@@ -1,5 +1,4 @@
-﻿using System;
-using Windows.Media.Control;
+﻿using Windows.Media.Control;
 
 namespace AudioFocus
 {
@@ -7,36 +6,54 @@ namespace AudioFocus
     {
         static async Task Main(string[] args)
         {
-            GlobalSystemMediaTransportControlsSession spotifySession = null;
+            var manager = await GlobalSystemMediaTransportControlsSessionManager.RequestAsync();
+            var spotifySession = TryGetSession("Spotify");
 
-            bool spotifyPlaying = false;
-            bool otherPlaying = false;
-            
-            async Task Sessions()
+            if (true)
             {
-                var manager = await GlobalSystemMediaTransportControlsSessionManager.RequestAsync();
+                if (spotifySession != null)
+                {
+                    Console.WriteLine(SpotifyPlaying());
+                }
+            }
+
+            bool SpotifyPlaying()
+            {
+                if (spotifySession.GetPlaybackInfo().PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing)
+                {
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+
+            GlobalSystemMediaTransportControlsSession TryGetSession(string name)
+            {
+                var sessions = manager.GetSessions();
+                foreach (var session in sessions)
+                {
+                    if (session.SourceAppUserModelId.Contains(name))
+                    {
+                        return session;
+                    }
+                }
+                return null;
+            }
+
+            async Task StopEverything()
+            {
                 var sessions = manager.GetSessions();
 
                 foreach (var session in sessions)
                 {
-                    var status = session.GetPlaybackInfo().PlaybackStatus;
-
-                    if (status == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing)
+                    if (session.GetPlaybackInfo().PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing)
                     {
-                        if (session.SourceAppUserModelId.Contains("Spotify"))
-                        {
-                            spotifySession = session;
-                            spotifyPlaying = true;
-                        }
-                        else
-                        {
-                            otherPlaying = true;
-                        }
+                        await session.TryPauseAsync();
                     }
                 }
             }
-
-            await Sessions();
 
             Console.ReadLine();
         }
