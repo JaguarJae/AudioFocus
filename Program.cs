@@ -2,79 +2,122 @@
 
 namespace AudioFocus
 {
-    class AudioFocus
+    static class AudioFocus
     {
+        static GlobalSystemMediaTransportControlsSession? activeSession;
+        static GlobalSystemMediaTransportControlsSession? spotifySession;
+        static GlobalSystemMediaTransportControlsSession[]? otherSession;
+        static GlobalSystemMediaTransportControlsSession[] allSessions;
+        static GlobalSystemMediaTransportControlsSessionManager manager;
+        enum States
+        {
+            Spotify,
+            Other,
+            Multiple,
+            Nothing,
+        }
         static async Task Main(string[] args)
         {
-            var manager = await GlobalSystemMediaTransportControlsSessionManager.RequestAsync();
-            GlobalSystemMediaTransportControlsSession spotifySession;
-            GlobalSystemMediaTransportControlsSession otherSession;
+            manager = await GlobalSystemMediaTransportControlsSessionManager.RequestAsync();
+            manager.SessionsChanged += OnSessionsChange;
 
-            while (true)
+            allSessions = GetAllSessions();
+
+            while (allSessions == null)
             {
-                if (IsSpotifyPlaying() && OtherPlaying())
-                {
+                allSessions = GetAllSessions();
+                await Task.Delay(500);
+            }
+            spotifySession = GetSpotifySession();
+            otherSession = GetOtherSessions();
 
+            oldState = AudioState();
+
+            while(true)
+            {
+                foreach (var session in allSessions)
+                {
+                    //Console.WriteLine(session.SourceAppUserModelId + ": " + session.GetPlaybackInfo().PlaybackStatus.ToString());
                 }
 
-                await Task.Delay(1000);
+                //Console.WriteLine(AudioState());
+
+                await Task.Delay(500);
             }
+        }
+        static void OnSessionsChange(GlobalSystemMediaTransportControlsSessionManager sender, SessionsChangedEventArgs args)
+        {
+            allSessions = sender.GetSessions().ToArray();
 
-            bool OtherPlaying()
+
+        }
+        static States AudioState()
+        {
+            if (spotifySession.GetPlaybackInfo().PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing)
             {
-                var sessions = manager.GetSessions();
-                otherSession = null;
-                foreach (var session in sessions)
+                if (OtherPlaying() == 0)
                 {
-                    if (session.GetPlaybackInfo().PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing && !session.SourceAppUserModelId.Contains("Spotify"))
-                    {
-                        otherSession = session;
-                        return true;
-                    }
-                }
-                return false;
-            }
-
-            bool IsSpotifyPlaying()
-            {
-                spotifySession = TryGetSession("Spotify");
-
-                if (spotifySession.GetPlaybackInfo().PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing)
-                {
-                    return true;
+                    activeSession = spotifySession;
+                    return States.Spotify;
                 }
                 else
                 {
-                    return false;
+                    return States.Multiple;
                 }
             }
-
-            GlobalSystemMediaTransportControlsSession TryGetSession(string name)
+            else if (OtherPlaying() > 0)
             {
-                var sessions = manager.GetSessions();
-                foreach (var session in sessions)
-                {
-                    if (session.SourceAppUserModelId.Contains(name))
-                    {
-                        return session;
-                    }
-                }
-                return null;
+                return States.Other;
             }
-
-            async Task StopEverything()
+            else
             {
-                var sessions = manager.GetSessions();
-
-                foreach (var session in sessions)
-                {
-                    if (session.GetPlaybackInfo().PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing)
-                    {
-                        await session.TryPauseAsync();
-                    }
-                }
+                return States.Nothing;
             }
-
         }
+        static int OtherPlaying()
+        {
+            int playing = 0;
+
+            for (int i = 0; i < otherSession.Length; i++)
+            {
+                if (otherSession[i].GetPlaybackInfo().PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing)
+                {
+                    playing++;
+                }
+            }
+            return playing;
+        }
+        static GlobalSystemMediaTransportControlsSession[] GetAllSessions()
+        {
+            return manager.GetSessions().ToArray();
+        }
+        static GlobalSystemMediaTransportControlsSession[] GetOtherSessions()
+        {
+            return allSessions.Where(s => !s.SourceAppUserModelId?.Contains("Spotify") == true).ToArray();
+        }
+        static GlobalSystemMediaTransportControlsSession? GetSpotifySession()
+        {
+            foreach (var session in allSessions)
+            {
+                if (session.SourceAppUserModelId?.Contains("Spotify") == true)
+                {
+                    return session;
+                }
+            }
+            return null;
+        }
+
+        /*async Task StopEverything()
+        {
+            var sessions = manager.GetSessions();
+
+            foreach (var session in sessions)
+            {
+                if (session.GetPlaybackInfo().PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing)
+                {
+                    await session.TryPauseAsync();
+                }
+            }
+        }*/
     }
 }
