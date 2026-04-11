@@ -7,18 +7,38 @@ namespace AudioFocus
         static async Task Main(string[] args)
         {
             var manager = await GlobalSystemMediaTransportControlsSessionManager.RequestAsync();
-            var spotifySession = TryGetSession("Spotify");
+            GlobalSystemMediaTransportControlsSession spotifySession;
+            GlobalSystemMediaTransportControlsSession otherSession;
 
-            if (true)
+            while (true)
             {
-                if (spotifySession != null)
+                if (IsSpotifyPlaying() && OtherPlaying())
                 {
-                    Console.WriteLine(SpotifyPlaying());
+
                 }
+
+                await Task.Delay(1000);
             }
 
-            bool SpotifyPlaying()
+            bool OtherPlaying()
             {
+                var sessions = manager.GetSessions();
+                otherSession = null;
+                foreach (var session in sessions)
+                {
+                    if (session.GetPlaybackInfo().PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing && !session.SourceAppUserModelId.Contains("Spotify"))
+                    {
+                        otherSession = session;
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            bool IsSpotifyPlaying()
+            {
+                spotifySession = TryGetSession("Spotify");
+
                 if (spotifySession.GetPlaybackInfo().PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing)
                 {
                     return true;
@@ -55,7 +75,6 @@ namespace AudioFocus
                 }
             }
 
-            Console.ReadLine();
         }
     }
 }
