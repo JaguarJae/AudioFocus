@@ -7,19 +7,10 @@ namespace AudioFocus
         static List<GlobalSystemMediaTransportControlsSession> PlayingSessions;
         static GlobalSystemMediaTransportControlsSession? activeSession;
         static GlobalSystemMediaTransportControlsSession? backSession;
-        static GlobalSystemMediaTransportControlsSession? spotifySession;
-        static GlobalSystemMediaTransportControlsSession[]? otherSessions;
         static GlobalSystemMediaTransportControlsSession[] allSessions;
         static GlobalSystemMediaTransportControlsSessionManager manager;
-        static bool test = false;
         static bool alwaysPlaying = false;
         static float silenceTime = 2;
-        enum States
-        {
-            Single,
-            Multiple,
-            Nothing,
-        }
         static async Task Main(string[] args)
         {
             manager = await GlobalSystemMediaTransportControlsSessionManager.RequestAsync();
@@ -31,12 +22,11 @@ namespace AudioFocus
                 session.PlaybackInfoChanged += async (s, e) => await OnSessionPlaybackChange(s, e);
             }
 
-            //spotifySession = GetSpotifySession();
-            //otherSessions = GetOtherSessions();
-            activeSession = GetActiveSession().Result;
+            activeSession = await GetActiveSession();
 
             while (true)
             {
+                Console.Clear();
                 Console.WriteLine("Active Session: " + activeSession?.SourceAppUserModelId);
                 Console.WriteLine("Back Session: " + backSession?.SourceAppUserModelId);
 
@@ -49,15 +39,12 @@ namespace AudioFocus
             switch (PlayingSessions.Count)
             {
                 case < 1:
-                    Console.WriteLine("None to decide");
                     return null;
 
                 case 1:
-                    Console.WriteLine("Easy decision");
                     return PlayingSessions.First();
 
                 case > 1:
-                    Console.WriteLine("Gotta choose best sound");
                     return await ChooseActiveSession();
             }
         }
@@ -71,31 +58,20 @@ namespace AudioFocus
         }
         static async Task OnSessionPlaybackChange(GlobalSystemMediaTransportControlsSession sender, PlaybackInfoChangedEventArgs args)
         {
-            if (sender.GetPlaybackInfo().PlaybackStatus != GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing)
+            if (sender.GetPlaybackInfo().PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing)
             {
-                if (activeSession == sender)
+                if (activeSession != sender && activeSession != null)
                 {
-                    if (alwaysPlaying && backSession != null)
-                    {
-                        await backSession.TryPlayAsync();
-                        activeSession = backSession;
-                    }
-                    else activeSession = null;
+                    await activeSession.TryPauseAsync();
+                    backSession = activeSession;
+                    activeSession = sender;
                 }
-
-                backSession = sender;
-            }
-            else
-            {
-                if (activeSession != null && activeSession != sender) await activeSession.TryPauseAsync();
-                activeSession = sender;
-
-                if (sender == backSession) backSession = null;
             }
         }
+
+
         static async void OnSessionListChange(GlobalSystemMediaTransportControlsSessionManager sender, SessionsChangedEventArgs args)
         {
-            Console.WriteLine("Session List Change!!");
             foreach (var session in allSessions)
             {
                 session.PlaybackInfoChanged -= async (s, e) => await OnSessionPlaybackChange(s, e);
@@ -106,20 +82,6 @@ namespace AudioFocus
                 session.PlaybackInfoChanged += async (s, e) => await OnSessionPlaybackChange(s, e);
             }
             activeSession = await GetActiveSession();
-        }
-        static States AudioState()
-        {
-            List<GlobalSystemMediaTransportControlsSession> totalPlaying = GetPlayingSessions();
-
-            switch (totalPlaying.Count)
-            {
-                case < 1:
-                    return States.Nothing;
-                case 1:
-                    return States.Single;
-                case > 1:
-                    return States.Multiple;
-            }
         }
         static List<GlobalSystemMediaTransportControlsSession> GetPlayingSessions()
         {
@@ -138,22 +100,7 @@ namespace AudioFocus
         {
             return manager.GetSessions().ToArray();
         }
-        static GlobalSystemMediaTransportControlsSession[] GetOtherSessions()
-        {
-            return allSessions.Where(s => !s.SourceAppUserModelId?.Contains("Spotify") == true).ToArray();
-        }
-        static GlobalSystemMediaTransportControlsSession? GetSpotifySession()
-        {
-            foreach (var session in allSessions)
-            {
-                if (session.SourceAppUserModelId?.Contains("Spotify") == true)
-                {
-                    return session;
-                }
-            }
-            return null;
-        }
-        static async Task StopEverythingBut(GlobalSystemMediaTransportControlsSession exceptionSession)
+        static async Task StopEverythingBut(GlobalSystemMediaTransportControlsSession? exceptionSession)
         {
             var sessions = manager.GetSessions();
 
