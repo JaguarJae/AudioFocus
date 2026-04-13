@@ -40,7 +40,7 @@ namespace AudioFocus
             foreach (var session in allSessions)
             {
                 Console.WriteLine("Session: " + session.SourceAppUserModelId + " is being targeted");
-                session.PlaybackInfoChanged += async (s, e) => await OnSessionPlaybackChange(s, e);
+                session.PlaybackInfoChanged += OnSessionPlaybackChange;
             }
         }
         static async void OnWindowsLockSwitch(object sender, SessionSwitchEventArgs e)
@@ -54,23 +54,22 @@ namespace AudioFocus
             else if (e.Reason == SessionSwitchReason.SessionUnlock)
             {
                 Console.WriteLine("Windows Unlocked");
-                await Task.Delay(500);
+                await Task.Delay(1000);
                 if (spotifySession != null) await spotifySession.TryPlayAsync();
                 activeSession = spotifySession;
+                backSession = null;
                 audioFocusActive = true;
             }
         }
-        static async Task OnSessionPlaybackChange(GlobalSystemMediaTransportControlsSession sender, PlaybackInfoChangedEventArgs args)
+        static async void OnSessionPlaybackChange(GlobalSystemMediaTransportControlsSession sender, PlaybackInfoChangedEventArgs args)
         {
             if (audioFocusActive)
             {
                 if (sender.GetPlaybackInfo().PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing)
                 {
                     Console.WriteLine(sender.SourceAppUserModelId + " has been played");
-                    Console.WriteLine("Active Session!!" + activeSession?.SourceAppUserModelId);
                     if (activeSession != sender && activeSession != null)
                     {
-                        Console.WriteLine("Mala notisia");
                         await activeSession.TryPauseAsync();
                         backSession = activeSession;
                     }
@@ -87,6 +86,7 @@ namespace AudioFocus
                             await Task.Delay(500);
                             await activeSession.TryPlayAsync();
                         }
+                        else activeSession = null;
                         backSession = sender;
                     }
                 }
@@ -96,12 +96,12 @@ namespace AudioFocus
         {
             foreach (var session in allSessions)
             {
-                session.PlaybackInfoChanged -= async (s, e) => await OnSessionPlaybackChange(s, e);
+                session.PlaybackInfoChanged -= OnSessionPlaybackChange;
             }
             allSessions = sender.GetSessions().ToArray();
             foreach (var session in allSessions)
             {
-                session.PlaybackInfoChanged += async (s, e) => await OnSessionPlaybackChange(s, e);
+                session.PlaybackInfoChanged += OnSessionPlaybackChange;
             }
             spotifySession = GetSpotifySession();
             activeSession = await GetActiveSession();
