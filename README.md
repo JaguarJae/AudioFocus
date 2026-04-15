@@ -1,44 +1,52 @@
 🎧 AudioFocus
 
-AudioFocus es una aplicación en C# que gestiona automáticamente qué aplicación de audio debe reproducirse en Windows, evitando conflictos entre múltiples fuentes de sonido.
+AudioFocus is a Windows application built in C# that automatically manages which app should be playing audio at any given time.
 
-Cuando varias aplicaciones intentan reproducir audio (Spotify, navegador, etc.), AudioFocus decide cuál debe estar activa y pausa el resto.
+When multiple applications (like Spotify, browsers, or media players) try to play sound simultaneously, AudioFocus intelligently selects the correct one and pauses the rest.
 
-⚙️ Características
-Detección automática de sesiones multimedia activas
-Priorización de aplicaciones (ej: Spotify sobre otras)
-Pausado automático de sesiones en segundo plano
-Cambio dinámico de foco de audio
-Integración con la API de Windows (GlobalSystemMediaTransportControlsSession)
-🧠 Cómo funciona
+✨ Features
+🔍 Automatic detection of active media sessions
+🎯 Smart audio focus prioritization (e.g. Spotify over others)
+⏸️ Auto-pausing of background audio sources
+🔄 Real-time updates when playback changes
+🧩 Built on top of Windows media session APIs
+🧠 How It Works
 
-AudioFocus utiliza la API de Windows:
+AudioFocus relies on the Windows media control system:
 
 GlobalSystemMediaTransportControlsSessionManager
 GlobalSystemMediaTransportControlsSession
+Core logic:
+Retrieve all active media sessions
+Detect which sessions are currently playing
+Determine the “active” session based on priority
+Pause all other sessions
+React to changes using event listeners (PlaybackInfoChanged)
 
-El flujo principal es:
+This allows AudioFocus to dynamically adapt as users switch between apps.
 
-Se obtienen todas las sesiones activas de audio
-Se detecta cuál está en reproducción (PlaybackStatus)
-Se decide cuál debe ser la sesión activa
-Se pausan las demás sesiones
-Se actualiza dinámicamente cuando hay cambios (PlaybackInfoChanged)
-🚀 Instalación
-Opción 1: Ejecutable
+🚀 Installation
+Option 1: Download executable
 
-Descarga la última versión desde Releases.
+Go to the Releases section and download the latest version.
 
-Opción 2: Compilar desde código
-git clone https://github.com/tuusuario/audiofocus.git
+Option 2: Build from source
+git clone https://github.com/yourusername/audiofocus.git
 cd audiofocus
 dotnet build
 dotnet run
-▶️ Uso
-Ejecuta la aplicación
-Abre varias apps de audio (Spotify, YouTube, etc.)
-AudioFocus gestionará automáticamente cuál debe reproducirse
-🛠️ Tecnologías
+▶️ Usage
+Launch AudioFocus
+Open multiple audio sources (Spotify, YouTube, etc.)
+The app will automatically manage which one should play
+
+No manual interaction required.
+
+🛠️ Tech Stack
 C# (.NET 8)
 Windows Media Control API
-WinForms (para UI / tray)
+WinForms (system tray support)
+⚠️ Known Limitations
+⏱️ Some applications (like Spotify) may have slight delay in state updates
+🪟 Only works on Windows (uses native APIs)
+🔄 Session detection depends on system-level media integration
