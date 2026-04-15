@@ -6,6 +6,8 @@ namespace AudioFocus
 {
     static class AudioFocus
     {
+        static SemaphoreSlim semaphore = new SemaphoreSlim(1, 1);
+
         static GlobalSystemMediaTransportControlsSession[] allSessions;
         static GlobalSystemMediaTransportControlsSessionManager manager;
 
@@ -25,13 +27,19 @@ namespace AudioFocus
 
             onIcon = LoadIcon("onIcon.ico");
             offIcon = LoadIcon("offIcon.ico");
+
+            spotifySession = GetSpotifySession();
+            activeSession = await GetActiveSession();
+
             CreateTray();
         }
         static Icon LoadIcon(string name)
         {
             var asm = Assembly.GetExecutingAssembly();
-            Stream stream = asm.GetManifestResourceStream($"AudioFocus.{name}");
-            return new Icon(stream);
+            using Stream? stream = asm.GetManifestResourceStream($"AudioFocus.{name}");
+
+            if (stream != null) return new Icon(stream);
+            else return SystemIcons.Application;
         }
         static void CreateTray()
         {
@@ -47,20 +55,20 @@ namespace AudioFocus
             ToolStripMenuItem quitItem = new ToolStripMenuItem("Quit");
 
             activateItem.Click += (s, e) =>
-             {
-                 Console.WriteLine("Changed to" + !audioFocusActive);
-                 audioFocusActive = !audioFocusActive;
-                 if (audioFocusActive)
-                 {
-                     activateItem.Text = "Deactivate";
-                     trayIcon.Icon = onIcon;
-                 }
-                 else
-                 {
-                     activateItem.Text = "Activate";
-                     trayIcon.Icon = offIcon;
-                 }
-             };
+            {
+                Log("Changed to" + !audioFocusActive);
+                audioFocusActive = !audioFocusActive;
+                if (audioFocusActive)
+                {
+                    activateItem.Text = "Deactivate";
+                    trayIcon.Icon = onIcon;
+                }
+                else
+                {
+                    activateItem.Text = "Activate";
+                    trayIcon.Icon = offIcon;
+                }
+            };
 
             quitItem.Click += (s, e) =>
             {
@@ -84,23 +92,28 @@ namespace AudioFocus
             allSessions = GetAllSessions();
             foreach (var session in allSessions)
             {
-                Console.WriteLine("Session: " + session.SourceAppUserModelId + " is being targeted");
+                Log("Session: " + session.SourceAppUserModelId + " is being targeted");
                 session.PlaybackInfoChanged += OnSessionPlaybackChange;
             }
         }
         static async void OnWindowsLockSwitch(object sender, SessionSwitchEventArgs e)
         {
-            if (audioFocusActive)
+            await semaphore.WaitAsync();
+            try
             {
                 if (e.Reason == SessionSwitchReason.SessionLock)
                 {
+                    Log("Thread locked");
                     audioFocusActive = false;
-                    Console.WriteLine("Windows Locked");
+                    Log("Windows Locked");
+                    await Task.Delay(500);
                     await StopEverythingBut(null);
                 }
                 else if (e.Reason == SessionSwitchReason.SessionUnlock)
                 {
-                    Console.WriteLine("Windows Unlocked");
+                    Log("Thread locked");
+
+                    Log("Windows Unlocked");
                     await Task.Delay(1000);
                     if (spotifySession != null) await spotifySession.TryPlayAsync();
                     activeSession = spotifySession;
@@ -108,51 +121,80 @@ namespace AudioFocus
                     audioFocusActive = true;
                 }
             }
+            finally
+            {
+                semaphore.Release();
+                Log("Thread free");
+            }
         }
         static async void OnSessionPlaybackChange(GlobalSystemMediaTransportControlsSession sender, PlaybackInfoChangedEventArgs args)
         {
-            if (audioFocusActive)
+            await semaphore.WaitAsync();
+            Log("Thread locked");
+
+            try
             {
-                if (sender.GetPlaybackInfo().PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing)
+                if (audioFocusActive)
                 {
-                    Console.WriteLine(sender.SourceAppUserModelId + " has been played");
-                    if (activeSession != sender && activeSession != null)
+                    if (sender.GetPlaybackInfo().PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing)
                     {
-                        await activeSession.TryPauseAsync();
-                        backSession = activeSession;
-                    }
-                    activeSession = sender;
-                }
-                else
-                {
-                    Console.WriteLine(sender.SourceAppUserModelId + " has been paused");
-                    if (sender == activeSession)
-                    {
-                        if (alwaysSomethingPlaying && backSession != null)
+                        Log(sender.SourceAppUserModelId + " has been played");
+                        if (activeSession != sender && activeSession != null)
                         {
-                            activeSession = backSession;
-                            await Task.Delay(500);
-                            await activeSession.TryPlayAsync();
+                            await activeSession.TryPauseAsync();
+                            backSession = activeSession;
                         }
-                        else activeSession = null;
-                        backSession = sender;
+                        activeSession = sender;
+                    }
+                    else
+                    {
+                        Log(sender.SourceAppUserModelId + " has been paused");
+                        if (sender == activeSession)
+                        {
+                            if (alwaysSomethingPlaying && backSession != null)
+                            {
+                                activeSession = backSession;
+                                await Task.Delay(500);
+                                await activeSession.TryPlayAsync();
+                            }
+                            else activeSession = null;
+                            backSession = sender;
+                        }
                     }
                 }
+            }
+            finally
+            {
+                semaphore.Release();
+                Log("Thread free");
+
             }
         }
         static async void OnSessionListChange(GlobalSystemMediaTransportControlsSessionManager sender, SessionsChangedEventArgs args)
         {
-            foreach (var session in allSessions)
+            await semaphore.WaitAsync();
+            Log("Thread locked");
+
+            try
             {
-                session.PlaybackInfoChanged -= OnSessionPlaybackChange;
+                foreach (var session in allSessions)
+                {
+                    session.PlaybackInfoChanged -= OnSessionPlaybackChange;
+                }
+                allSessions = sender.GetSessions().ToArray();
+                foreach (var session in allSessions)
+                {
+                    session.PlaybackInfoChanged += OnSessionPlaybackChange;
+                }
+                spotifySession = GetSpotifySession();
+                activeSession = await GetActiveSession();
             }
-            allSessions = sender.GetSessions().ToArray();
-            foreach (var session in allSessions)
+            finally
             {
-                session.PlaybackInfoChanged += OnSessionPlaybackChange;
+                semaphore.Release();
+                Log("Thread free");
+
             }
-            spotifySession = GetSpotifySession();
-            activeSession = await GetActiveSession();
         }
         static async Task StopEverythingBut(GlobalSystemMediaTransportControlsSession? exceptionSession)
         {
@@ -185,7 +227,7 @@ namespace AudioFocus
         }
         static GlobalSystemMediaTransportControlsSession? GetSpotifySession()
         {
-            return allSessions.FirstOrDefault(s => s.SourceAppUserModelId?.Contains("Spotify") == true);
+            return allSessions.FirstOrDefault(s => s.SourceAppUserModelId?.ToLower().Contains("spotify") == true);
         }
         static async Task<GlobalSystemMediaTransportControlsSession?> GetActiveSession()
         {
@@ -210,6 +252,12 @@ namespace AudioFocus
             var chosenSession = PlayingSessions.First();
             await StopEverythingBut(chosenSession);
             return chosenSession;
+        }
+
+        [System.Diagnostics.Conditional("DEBUG")]
+        static void Log(string msg)
+        {
+            Console.WriteLine(msg);
         }
     }
 }

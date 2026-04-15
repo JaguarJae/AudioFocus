@@ -1,31 +1,31 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
-    <RootNamespace>AudioFocus</RootNamespace>
-    <UseWindowsForms>true</UseWindowsForms>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
+	<PropertyGroup>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+		<RootNamespace>AudioFocus</RootNamespace>
+		<UseWindowsForms>true</UseWindowsForms>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
 
-  <ItemGroup>
-    <None Remove="offIcon.ico" />
-    <None Remove="onIcon.ico" />
-  </ItemGroup>
+		<!-- Single executable -->
+		<PublishSingleFile>true</PublishSingleFile>
+		<SelfContained>true</SelfContained>
+		<RuntimeIdentifier>win-x64</RuntimeIdentifier>
 
-  <ItemGroup>
-    <EmbeddedResource Include="offIcon.ico">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="onIcon.ico">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </EmbeddedResource>
-  </ItemGroup>
+		<!-- Stability for WinForms + Windows APIs -->
+		<IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+		<EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+		<PublishTrimmed>false</PublishTrimmed>
 
-  <ItemGroup>
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260317003" />
-    <PackageReference Include="MouseKeyHook" Version="5.7.1" />
-  </ItemGroup>
+		<ApplicationIcon>app.ico</ApplicationIcon>
+	</PropertyGroup>
+
+	<!-- Icon files embedded inside exe -->
+	<ItemGroup>
+		<EmbeddedResource Include="onIcon.ico" />
+		<EmbeddedResource Include="offIcon.ico" />
+		<None Include="app.ico" />
+	</ItemGroup>
 
 </Project>
