@@ -16,7 +16,7 @@ namespace AudioFocus
         static GlobalSystemMediaTransportControlsSession? backSession;
         static GlobalSystemMediaTransportControlsSession? spotifySession;
 
-        static bool alwaysSomethingPlaying = true;
+        static bool alwaysPlaying = true;
         static bool audioFocusActive = true;
 
         static Icon onIcon;
@@ -51,6 +51,8 @@ namespace AudioFocus
 
             ContextMenuStrip menu = new ContextMenuStrip();
 
+            ToolStripMenuItem stopAllItem = new ToolStripMenuItem("Stop Everything");
+            ToolStripMenuItem alwaysPlayingBox = new ToolStripMenuItem("Always Something Playing");
             ToolStripMenuItem activateItem = new ToolStripMenuItem("Deactivate");
             ToolStripMenuItem quitItem = new ToolStripMenuItem("Quit");
 
@@ -76,6 +78,19 @@ namespace AudioFocus
                 Application.Exit();
             };
 
+            stopAllItem.Click += (s, e) =>
+            {
+                StopEverythingBut(null);
+            };
+
+            alwaysPlayingBox.Click += (s, e) =>
+            {
+                alwaysPlaying = !alwaysPlaying;
+                alwaysPlayingBox.Checked = alwaysPlaying;
+            };
+
+            menu.Items.Add(stopAllItem);
+            menu.Items.Add(alwaysPlayingBox); alwaysPlayingBox.Checked = alwaysPlaying;
             menu.Items.Add(activateItem);
             menu.Items.Add(quitItem);
 
@@ -138,20 +153,22 @@ namespace AudioFocus
                 {
                     if (sender.GetPlaybackInfo().PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing)
                     {
-                        Log(sender.SourceAppUserModelId + " has been played");
-                        if (activeSession != sender && activeSession != null)
+                        if (sender != activeSession)
                         {
-                            await activeSession.TryPauseAsync();
+                            Log(sender.SourceAppUserModelId + " has been played");
+
+                            if (activeSession != null) await activeSession.TryPauseAsync();
+
                             backSession = activeSession;
-                        }
-                        activeSession = sender;
+                            activeSession = sender;
+                        }                                             
                     }
                     else
                     {
                         Log(sender.SourceAppUserModelId + " has been paused");
                         if (sender == activeSession)
                         {
-                            if (alwaysSomethingPlaying && backSession != null)
+                            if (alwaysPlaying && backSession != null)
                             {
                                 activeSession = backSession;
                                 await Task.Delay(500);
@@ -166,7 +183,9 @@ namespace AudioFocus
             finally
             {
                 semaphore.Release();
-                Log("Thread free");
+                Log("\nActive Session: " + activeSession?.SourceAppUserModelId);
+                Log("Back Session: " + backSession?.SourceAppUserModelId + "\n");
+                Log("Thread free\n");
 
             }
         }
