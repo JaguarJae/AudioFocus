@@ -19,6 +19,8 @@ namespace AudioFocus
         static bool alwaysPlaying = true;
         static bool audioFocusActive = true;
 
+        static int silenceInterrupt = 0;
+
         static Icon onIcon;
         static Icon offIcon;
         static async Task Main(string[] args)
@@ -144,6 +146,9 @@ namespace AudioFocus
         }
         static async void OnSessionPlaybackChange(GlobalSystemMediaTransportControlsSession sender, PlaybackInfoChangedEventArgs args)
         {
+            silenceInterrupt++;
+            Log("Silence Interrupted: " + silenceInterrupt);
+
             await semaphore.WaitAsync();
             Log("Thread locked");
 
@@ -151,30 +156,43 @@ namespace AudioFocus
             {
                 if (audioFocusActive)
                 {
+
                     if (sender.GetPlaybackInfo().PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing)
                     {
+                        Log(sender.SourceAppUserModelId + " has been played");
+
                         if (sender != activeSession)
                         {
-                            Log(sender.SourceAppUserModelId + " has been played");
-
                             if (activeSession != null) await activeSession.TryPauseAsync();
 
                             backSession = activeSession;
                             activeSession = sender;
-                        }                                             
+                        }
                     }
                     else
                     {
                         Log(sender.SourceAppUserModelId + " has been paused");
                         if (sender == activeSession)
                         {
+                            silenceInterrupt = 0;
                             if (alwaysPlaying && backSession != null)
                             {
-                                activeSession = backSession;
                                 await Task.Delay(500);
-                                await activeSession.TryPlayAsync();
+                                if (silenceInterrupt == 0)
+                                {
+                                    Log("essential back session" + backSession.SourceAppUserModelId);
+                                    activeSession = backSession;
+                                    await activeSession.TryPlayAsync();
+                                }
+                                else
+                                {
+                                    return;
+                                }
                             }
-                            else activeSession = null;
+                            else 
+                            { 
+                                activeSession = null; 
+                            }
                             backSession = sender;
                         }
                     }
@@ -185,7 +203,7 @@ namespace AudioFocus
                 semaphore.Release();
                 Log("\nActive Session: " + activeSession?.SourceAppUserModelId);
                 Log("Back Session: " + backSession?.SourceAppUserModelId + "\n");
-                Log("Thread free\n");
+                Log("Thread free");
 
             }
         }
@@ -218,6 +236,9 @@ namespace AudioFocus
         static async Task StopEverythingBut(GlobalSystemMediaTransportControlsSession? exceptionSession)
         {
             var sessions = manager.GetSessions();
+
+            activeSession = exceptionSession;
+            backSession = null;
 
             foreach (var session in sessions)
             {
