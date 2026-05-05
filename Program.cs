@@ -177,11 +177,12 @@ namespace AudioFocus
                             silenceInterrupt = 0;
                             if (alwaysPlaying && backSession != null)
                             {
-                                await Task.Delay(500);
+                                await Task.Delay(400);
                                 if (silenceInterrupt == 0)
                                 {
                                     Log("essential back session" + backSession.SourceAppUserModelId);
                                     activeSession = backSession;
+                                    backSession = sender;
                                     await activeSession.TryPlayAsync();
                                 }
                                 else
@@ -189,11 +190,11 @@ namespace AudioFocus
                                     return;
                                 }
                             }
-                            else 
+                            else
                             { 
-                                activeSession = null; 
+                                activeSession = null;
+                                backSession = sender;
                             }
-                            backSession = sender;
                         }
                     }
                 }
