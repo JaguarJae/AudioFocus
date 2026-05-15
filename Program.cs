@@ -92,7 +92,7 @@ namespace AudioFocus
             };
 
             menu.Items.Add(stopAllItem);
-            menu.Items.Add(alwaysPlayingBox); alwaysPlayingBox.Checked = alwaysPlaying;
+            // menu.Items.Add(alwaysPlayingBox); alwaysPlayingBox.Checked = alwaysPlaying;
             menu.Items.Add(activateItem);
             menu.Items.Add(quitItem);
 
@@ -128,13 +128,14 @@ namespace AudioFocus
                 }
                 else if (e.Reason == SessionSwitchReason.SessionUnlock)
                 {
-                    Log("Thread locked");
-
                     Log("Windows Unlocked");
-                    await Task.Delay(1000);
-                    if (spotifySession != null) await spotifySession.TryPlayAsync();
-                    activeSession = spotifySession;
-                    backSession = null;
+                    
+                    if (spotifySession != null)
+                    {
+                        await Task.Delay(1000);
+                        await spotifySession.TryPlayAsync();
+                    }
+                    
                     audioFocusActive = true;
                 }
             }
@@ -167,6 +168,11 @@ namespace AudioFocus
 
                             backSession = activeSession;
                             activeSession = sender;
+
+                        }
+                        else
+                        {
+                            Log("No sense playing bug");
                         }
                     }
                     else
@@ -175,12 +181,11 @@ namespace AudioFocus
                         if (sender == activeSession)
                         {
                             silenceInterrupt = 0;
-                            if (alwaysPlaying && backSession != null)
+                            if (alwaysPlaying == true && backSession != null)
                             {
                                 await Task.Delay(400);
                                 if (silenceInterrupt == 0)
                                 {
-                                    Log("essential back session" + backSession.SourceAppUserModelId);
                                     activeSession = backSession;
                                     backSession = sender;
                                     await activeSession.TryPlayAsync();
@@ -191,7 +196,7 @@ namespace AudioFocus
                                 }
                             }
                             else
-                            { 
+                            {
                                 activeSession = null;
                                 backSession = sender;
                             }
