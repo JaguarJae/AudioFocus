@@ -1,7 +1,6 @@
 ﻿using Windows.Media.Control;
 using Microsoft.Win32;
 using System.Reflection;
-
 namespace AudioFocus
 {
     static class AudioFocus
@@ -23,8 +22,17 @@ namespace AudioFocus
 
         static Icon onIcon;
         static Icon offIcon;
+
+        static Dictionary<string, string> config;
+        static string configPath; 
+
         static async Task Main(string[] args)
         {
+            config = new Dictionary<string, string>();
+            config = LoadConfig();
+
+            alwaysPlaying = bool.Parse(config["alwaysPlaying"]);
+
             await EventSubscriptions();
 
             onIcon = LoadIcon("onIcon.ico");
@@ -89,16 +97,53 @@ namespace AudioFocus
             {
                 alwaysPlaying = !alwaysPlaying;
                 alwaysPlayingBox.Checked = alwaysPlaying;
+                SaveConfig();
             };
 
             menu.Items.Add(stopAllItem);
-            // menu.Items.Add(alwaysPlayingBox); alwaysPlayingBox.Checked = alwaysPlaying;
+            menu.Items.Add(alwaysPlayingBox); alwaysPlayingBox.Checked = alwaysPlaying;
             menu.Items.Add(activateItem);
             menu.Items.Add(quitItem);
 
             trayIcon.ContextMenuStrip = menu;
 
             Application.Run();
+        }
+        static Dictionary<string, string> LoadConfig()
+        {
+            string folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"AudioFocus");
+
+            Directory.CreateDirectory(folder);
+
+            configPath = Path.Combine(folder, "config.cfg");
+            Dictionary<string, string> configFile = new();
+
+            if (!File.Exists(configPath))
+            {
+                SaveConfig();
+            }
+
+            foreach (var line in File.ReadLines(configPath))
+            {
+                if (string.IsNullOrWhiteSpace(line)) continue;
+                if (line.StartsWith("#")) continue;
+
+                var parts = line.Split('=', 2);
+
+                if (parts.Length != 2) continue;
+
+                string key = parts[0].Trim();
+                string value = parts[1].Trim();
+
+                configFile[key] = value;
+            }
+
+            return configFile;
+        }
+        static void SaveConfig()
+        {
+            config["alwaysPlaying"] = alwaysPlaying.ToString();
+            File.WriteAllLines(configPath,config.Select(kvp => $"{kvp.Key}={kvp.Value}"));
         }
         static async Task EventSubscriptions()
         {
