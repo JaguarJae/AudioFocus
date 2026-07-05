@@ -20,6 +20,9 @@ namespace AudioFocus
 
         static int silenceInterrupt = 0;
 
+        static int lockDelay = 500;
+        static int unlockDelay = 1000;
+
         static Icon onIcon;
         static Icon offIcon;
 
@@ -29,9 +32,9 @@ namespace AudioFocus
         static async Task Main(string[] args)
         {
             config = new Dictionary<string, string>();
-            config = LoadConfig();
+            config = ReadConfig();
 
-            alwaysPlaying = bool.Parse(config["alwaysPlaying"]);
+            LoadConfig();
 
             await EventSubscriptions();
 
@@ -101,7 +104,7 @@ namespace AudioFocus
             };
 
             menu.Items.Add(stopAllItem);
-            menu.Items.Add(alwaysPlayingBox); alwaysPlayingBox.Checked = alwaysPlaying;
+            //menu.Items.Add(alwaysPlayingBox); alwaysPlayingBox.Checked = alwaysPlaying;
             menu.Items.Add(activateItem);
             menu.Items.Add(quitItem);
 
@@ -109,7 +112,7 @@ namespace AudioFocus
 
             Application.Run();
         }
-        static Dictionary<string, string> LoadConfig()
+        static Dictionary<string, string> ReadConfig()
         {
             string folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"AudioFocus");
 
@@ -143,7 +146,16 @@ namespace AudioFocus
         static void SaveConfig()
         {
             config["alwaysPlaying"] = alwaysPlaying.ToString();
+            config["lockDelay"] = lockDelay.ToString();
+            config["unlockDelay"] = unlockDelay.ToString();
+
             File.WriteAllLines(configPath,config.Select(kvp => $"{kvp.Key}={kvp.Value}"));
+        }
+        static void LoadConfig()
+        {
+            alwaysPlaying = bool.Parse(config["alwaysPlaying"]);
+            lockDelay = int.Parse(config["lockDelay"]);
+            unlockDelay = int.Parse(config["unlockDelay"]);
         }
         static async Task EventSubscriptions()
         {
@@ -168,16 +180,16 @@ namespace AudioFocus
                     Log("Thread locked");
                     audioFocusActive = false;
                     Log("Windows Locked");
-                    await Task.Delay(500);
+                    await Task.Delay(lockDelay);
                     await StopEverythingBut(null);
                 }
                 else if (e.Reason == SessionSwitchReason.SessionUnlock)
                 {
                     Log("Windows Unlocked");
                     
-                    if (spotifySession != null)
+                    if (spotifySession != null & alwaysPlaying == true)
                     {
-                        await Task.Delay(1000);
+                        await Task.Delay(unlockDelay);
                         await spotifySession.TryPlayAsync();
                     }
                     
