@@ -5,7 +5,7 @@ namespace AudioFocus
 {
     static class AudioFocus
     {
-        static SemaphoreSlim semaphore = new SemaphoreSlim(1, 1);
+        static readonly SemaphoreSlim semaphore = new SemaphoreSlim(1, 1);
 
         static GlobalSystemMediaTransportControlsSession[] allSessions;
         static GlobalSystemMediaTransportControlsSessionManager manager;
@@ -27,7 +27,7 @@ namespace AudioFocus
         static Icon offIcon;
 
         static Dictionary<string, string> config;
-        static string configPath; 
+        static string configPath;
 
         static async Task Main(string[] args)
         {
@@ -186,13 +186,13 @@ namespace AudioFocus
                 else if (e.Reason == SessionSwitchReason.SessionUnlock)
                 {
                     Log("Windows Unlocked");
-                    
+
                     if (spotifySession != null & alwaysPlaying == true)
                     {
                         await Task.Delay(unlockDelay);
                         await spotifySession.TryPlayAsync();
                     }
-                    
+
                     audioFocusActive = true;
                 }
             }
