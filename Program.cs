@@ -1,6 +1,7 @@
 ﻿using Windows.Media.Control;
 using Microsoft.Win32;
 using System.Reflection;
+
 namespace AudioFocus
 {
     static class AudioFocus
@@ -65,9 +66,14 @@ namespace AudioFocus
             ContextMenuStrip menu = new ContextMenuStrip();
 
             ToolStripMenuItem stopAllItem = new ToolStripMenuItem("Stop Everything");
-            ToolStripMenuItem alwaysPlayingBox = new ToolStripMenuItem("Always Something Playing");
             ToolStripMenuItem activateItem = new ToolStripMenuItem("Deactivate");
+            ToolStripMenuItem settingsItem = new ToolStripMenuItem("Settings");
             ToolStripMenuItem quitItem = new ToolStripMenuItem("Quit");
+
+            stopAllItem.Click += (s, e) =>
+            {
+                StopEverythingBut(null);
+            };
 
             activateItem.Click += (s, e) =>
             {
@@ -85,27 +91,21 @@ namespace AudioFocus
                 }
             };
 
+            settingsItem.Click += (s, e) =>
+            {
+                using var settings = new SettingsForm();
+                settings.ShowDialog();
+            };
+
             quitItem.Click += (s, e) =>
             {
                 trayIcon.Visible = false;
                 Application.Exit();
             };
 
-            stopAllItem.Click += (s, e) =>
-            {
-                StopEverythingBut(null);
-            };
-
-            alwaysPlayingBox.Click += (s, e) =>
-            {
-                alwaysPlaying = !alwaysPlaying;
-                alwaysPlayingBox.Checked = alwaysPlaying;
-                SaveConfig();
-            };
-
             menu.Items.Add(stopAllItem);
-            //menu.Items.Add(alwaysPlayingBox); alwaysPlayingBox.Checked = alwaysPlaying;
             menu.Items.Add(activateItem);
+            menu.Items.Add(settingsItem);
             menu.Items.Add(quitItem);
 
             trayIcon.ContextMenuStrip = menu;
@@ -114,7 +114,7 @@ namespace AudioFocus
         }
         static Dictionary<string, string> ReadConfig()
         {
-            string folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"AudioFocus");
+            string folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AudioFocus");
 
             Directory.CreateDirectory(folder);
 
@@ -143,6 +143,21 @@ namespace AudioFocus
 
             return configFile;
         }
+
+        internal static (bool alwaysPlaying, int lockDelay, int unlockDelay) GetSettings()
+        {
+            return (alwaysPlaying, lockDelay, unlockDelay);
+        }
+
+        internal static void UpdateSettings(bool newAlwaysPlaying, int newLockDelay, int newUnlockDelay)
+        {
+            alwaysPlaying = newAlwaysPlaying;
+            lockDelay = newLockDelay;
+            unlockDelay = newUnlockDelay;
+
+            SaveConfig();
+        }
+
         static void SaveConfig()
         {
             config["alwaysPlaying"] = alwaysPlaying.ToString();
