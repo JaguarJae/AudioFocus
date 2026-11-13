@@ -1,12 +1,18 @@
 ﻿using Windows.Media.Control;
 using Microsoft.Win32;
 using System.Reflection;
+using System;
+using System.IO;
 
 namespace AudioFocus
 {
     static class AudioFocus
     {
         static readonly SemaphoreSlim semaphore = new SemaphoreSlim(1, 1);
+
+        static string origin = Path.Combine(AppContext.BaseDirectory, "AudioFocus.lnk");
+        static readonly string startupPath = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
+        static string shortcutPath = Path.Combine(startupPath, "AudioFocus.lnk");
 
         static GlobalSystemMediaTransportControlsSession[]? allSessions;
         static GlobalSystemMediaTransportControlsSessionManager manager;
@@ -18,11 +24,12 @@ namespace AudioFocus
 
         static bool alwaysPlaying = true;
         static bool audioFocusActive = true;
+        static bool startOnStartup = true;
+        static int lockDelay = 500;
+        static int unlockDelay = 1000;
 
         static int silenceInterrupt = 0;
 
-        static int lockDelay = 500;
-        static int unlockDelay = 1000;
 
         static Icon onIcon;
         static Icon offIcon;
@@ -144,16 +151,28 @@ namespace AudioFocus
             return configFile;
         }
 
-        internal static (bool alwaysPlaying, int lockDelay, int unlockDelay) GetSettings()
+        internal static (bool alwaysPlaying, bool startOnStartup, int lockDelay, int unlockDelay) GetSettings()
         {
-            return (alwaysPlaying, lockDelay, unlockDelay);
+            return (alwaysPlaying, startOnStartup, lockDelay, unlockDelay);
         }
 
-        internal static void UpdateSettings(bool newAlwaysPlaying, int newLockDelay, int newUnlockDelay)
+        internal static void UpdateSettings(bool newAlwaysPlaying, bool newStartOnStartup, int newLockDelay, int newUnlockDelay)
         {
             alwaysPlaying = newAlwaysPlaying;
             lockDelay = newLockDelay;
             unlockDelay = newUnlockDelay;
+            startOnStartup = newStartOnStartup;
+
+            if (startOnStartup)
+            {
+                if (File.Exists(origin))
+                    File.Copy(origin, shortcutPath, overwrite: true);
+            }
+            else
+            {
+                if (File.Exists(shortcutPath))
+                    File.Delete(shortcutPath);
+            }
 
             SaveConfig();
         }
@@ -161,6 +180,7 @@ namespace AudioFocus
         static void SaveConfig()
         {
             config["alwaysPlaying"] = alwaysPlaying.ToString();
+            config["startOnStartup"] = startOnStartup.ToString();
             config["lockDelay"] = lockDelay.ToString();
             config["unlockDelay"] = unlockDelay.ToString();
 
@@ -169,6 +189,7 @@ namespace AudioFocus
         static void LoadConfig()
         {
             alwaysPlaying = bool.Parse(config["alwaysPlaying"]);
+            startOnStartup = bool.Parse(config["startOnStartup"]);
             lockDelay = int.Parse(config["lockDelay"]);
             unlockDelay = int.Parse(config["unlockDelay"]);
         }

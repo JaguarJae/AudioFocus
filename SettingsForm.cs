@@ -3,6 +3,7 @@ namespace AudioFocus
     public class SettingsForm : Form
     {
         private CheckBox alwaysPlayingBox;
+        private CheckBox startOnStartupBox;
         private NumericUpDown lockDelayInput;
         private NumericUpDown unlockDelayInput;
 
@@ -22,6 +23,14 @@ namespace AudioFocus
                 Text = "Always Something Playing",
                 Checked = settings.alwaysPlaying,
                 Location = new Point(20, 20),
+                AutoSize = true
+            };
+
+            startOnStartupBox = new CheckBox
+            {
+                Text = "Start On Startup",
+                Checked = settings.startOnStartup,
+                Location = new Point(20, 40),
                 AutoSize = true
             };
 
@@ -78,6 +87,7 @@ namespace AudioFocus
             {
                 AudioFocus.UpdateSettings(
                     alwaysPlayingBox.Checked,
+                    startOnStartupBox.Checked,
                     (int)lockDelayInput.Value,
                     (int)unlockDelayInput.Value
                 );
@@ -88,6 +98,7 @@ namespace AudioFocus
             Controls.AddRange(new Control[]
             {
                 alwaysPlayingBox,
+                startOnStartupBox,
                 lockLabel,
                 lockDelayInput,
                 unlockLabel,
