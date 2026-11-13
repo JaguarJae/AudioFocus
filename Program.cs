@@ -8,7 +8,7 @@ namespace AudioFocus
     {
         static readonly SemaphoreSlim semaphore = new SemaphoreSlim(1, 1);
 
-        static GlobalSystemMediaTransportControlsSession[] allSessions;
+        static GlobalSystemMediaTransportControlsSession[]? allSessions;
         static GlobalSystemMediaTransportControlsSessionManager manager;
 
         static List<GlobalSystemMediaTransportControlsSession> PlayingSessions;
@@ -119,7 +119,7 @@ namespace AudioFocus
             Directory.CreateDirectory(folder);
 
             configPath = Path.Combine(folder, "config.cfg");
-            Dictionary<string, string> configFile = new();
+            Dictionary<string, string> configFile = [];
 
             if (!File.Exists(configPath))
             {
@@ -205,7 +205,7 @@ namespace AudioFocus
                     if (spotifySession != null & alwaysPlaying == true)
                     {
                         await Task.Delay(unlockDelay);
-                        await spotifySession.TryPlayAsync();
+                        await spotifySession?.TryPlayAsync();
                     }
 
                     audioFocusActive = true;
@@ -292,8 +292,9 @@ namespace AudioFocus
 
             try
             {
-                foreach (var session in allSessions)
+                for (int i = 0; i < allSessions.Length; i++)
                 {
+                    GlobalSystemMediaTransportControlsSession? session = allSessions[i];
                     session.PlaybackInfoChanged -= OnSessionPlaybackChange;
                 }
                 allSessions = sender.GetSessions().ToArray();

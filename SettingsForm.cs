@@ -1,8 +1,3 @@
-
-using System;
-using System.Drawing;
-using System.Windows.Forms;
-
 namespace AudioFocus
 {
     public class SettingsForm : Form
