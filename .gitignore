@@ -1,6 +1,2 @@
-# 🔹 Build (compilación)
 bin/
 obj/
-
-# 🔹 Visual Studio
-.vs/
