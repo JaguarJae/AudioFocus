@@ -195,10 +195,30 @@ namespace AudioFocus
         }
         static void LoadConfig()
         {
-            alwaysPlaying = bool.Parse(config["alwaysPlaying"]);
-            startOnStartup = bool.Parse(config["startOnStartup"]);
-            lockDelay = int.Parse(config["lockDelay"]);
-            unlockDelay = int.Parse(config["unlockDelay"]);
+            bool save = false;
+
+            if (!bool.TryParse(config["alwaysPlaying"], out alwaysPlaying))
+            {
+                alwaysPlaying = true;
+                save = true;
+            }
+            if (!bool.TryParse(config["startOnStartup"], out startOnStartup))
+            {
+                startOnStartup = true;
+                save = true;
+            }
+            if (!int.TryParse(config["lockDelay"], out lockDelay))
+            {
+                lockDelay = 500;
+                save = true;
+            }
+            if (!int.TryParse(config["unlockDelay"], out unlockDelay))
+            {
+                unlockDelay = 1000;
+                save = true;
+            }
+            if (save)
+                SaveConfig();
         }
         static async Task EventSubscriptions()
         {
