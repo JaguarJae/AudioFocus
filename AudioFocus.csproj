@@ -24,9 +24,6 @@
 		<EmbeddedResource Include="onIcon.ico" />
 		<EmbeddedResource Include="offIcon.ico" />
 		<None Include="app.ico" />
-		<None Update="AudioFocus.lnk">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</None>
 	</ItemGroup>
 
 	<ItemGroup>
