@@ -1,18 +1,13 @@
 ﻿using Windows.Media.Control;
 using Microsoft.Win32;
 using System.Reflection;
-using System;
-using System.IO;
+using WindowsShortcutFactory;
 
 namespace AudioFocus
 {
     static class AudioFocus
     {
         static readonly SemaphoreSlim semaphore = new SemaphoreSlim(1, 1);
-
-        static string origin = Path.Combine(AppContext.BaseDirectory, "AudioFocus.lnk");
-        static readonly string startupPath = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
-        static string shortcutPath = Path.Combine(startupPath, "AudioFocus.lnk");
 
         static GlobalSystemMediaTransportControlsSession[]? allSessions;
         static GlobalSystemMediaTransportControlsSessionManager manager;
@@ -43,6 +38,7 @@ namespace AudioFocus
             config = ReadConfig();
 
             LoadConfig();
+            SetAutoStartup(startOnStartup);
 
             await EventSubscriptions();
 
@@ -151,6 +147,28 @@ namespace AudioFocus
             return configFile;
         }
 
+        internal static void SetAutoStartup(bool activate)
+        {
+            string startupPath = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
+            string linkPath = Path.Combine(startupPath, "AudioFocus.lnk");
+            if (activate)
+            {
+                string? workingPath = Environment.ProcessPath;
+                if (workingPath != null)
+                {
+                    var shortcut = new WindowsShortcut();
+                    shortcut.Path = workingPath;
+                    shortcut.WorkingDirectory = Path.GetDirectoryName(workingPath);
+                    shortcut.Save(linkPath);
+                }
+            }
+            else
+            {
+                if (File.Exists(linkPath))
+                    File.Delete(linkPath);
+            }
+        }
+
         internal static (bool alwaysPlaying, bool startOnStartup, int lockDelay, int unlockDelay) GetSettings()
         {
             return (alwaysPlaying, startOnStartup, lockDelay, unlockDelay);
@@ -162,17 +180,6 @@ namespace AudioFocus
             lockDelay = newLockDelay;
             unlockDelay = newUnlockDelay;
             startOnStartup = newStartOnStartup;
-
-            if (startOnStartup)
-            {
-                if (File.Exists(origin))
-                    File.Copy(origin, shortcutPath, overwrite: true);
-            }
-            else
-            {
-                if (File.Exists(shortcutPath))
-                    File.Delete(shortcutPath);
-            }
 
             SaveConfig();
         }
@@ -223,7 +230,7 @@ namespace AudioFocus
                 {
                     Log("Windows Unlocked");
 
-                    if (spotifySession != null & alwaysPlaying == true)
+                    if (spotifySession != null && alwaysPlaying == true)
                     {
                         await Task.Delay(unlockDelay);
                         await spotifySession?.TryPlayAsync();

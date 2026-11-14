@@ -91,6 +91,7 @@ namespace AudioFocus
                     (int)lockDelayInput.Value,
                     (int)unlockDelayInput.Value
                 );
+                AudioFocus.SetAutoStartup(startOnStartupBox.Checked);
 
                 Close();
             };
